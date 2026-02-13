@@ -17,17 +17,16 @@ from gi.repository import GLib
 from dbus.mainloop.glib import DBusGMainLoop
 import logging
 from logging import debug, info, warning, error
-import bluetooth
-from bluetooth import *
+import socket
 
 logging.basicConfig(level=logging.DEBUG)
 
 # @todo fill your host mac here manually
-TARGET_ADDRESS = ""
+TARGET_ADDRESS = "90:45:28:30:11:D7"
 
 class BTKbDevice():
     # change these constants
-    MY_ADDRESS = "B8:27:EB:C5:B3:27"
+    MY_ADDRESS = "F4:D1:08:59:83:2C"
     MY_DEV_NAME = "ThanhLe_Keyboard_Mouse"
 
     # define some constants
@@ -59,7 +58,9 @@ class BTKbDevice():
         service_record = self.read_sdp_service_record()
         opts = {
             "AutoConnect": True,
-            "ServiceRecord": service_record
+            "ServiceRecord": service_record,
+            "RequireAuthentication": False,  # 追加：認証を要求しない
+            "RequireAuthorization": False,   # 追加：承認を要求しない
         }
         # retrieve a proxy for the bluez profile interface
         bus = dbus.SystemBus()
@@ -95,13 +96,13 @@ class BTKbDevice():
 
         # key point: use connect to get the host request for the accept() below
         # it work, I just dont care for having been into it for 2days
-        self.setup_socket()
-        try:
+        #self.setup_socket()
+        #try:
             # must be ahead of listen or 'File descriptor in bad state'
-            self.scontrol.connect((TARGET_ADDRESS, self.P_CTRL))
-        except socket.error as err:
+        #    self.scontrol.connect((TARGET_ADDRESS, self.P_CTRL))
+        #except socket.error as err:
             # it was expect to failed
-            print("Connect failed: "+str(err))
+         #   print("Connect failed: "+str(err))
 
         # this may not work
         # os.system("bluetoothctl connect " + TARGET_ADDRESS)
@@ -155,6 +156,22 @@ class BTKbService(dbus.service.Object):
                 state[count] = int(key_code)
             count += 1
         self.device.send_string(state)
+    
+    @dbus.service.method('org.thanhle.btkbservice', in_signature='qq')
+    def send_consumer_key(self, key_code, modifier=0):
+        print(f"Get consumer_key request: {key_code}")
+        # Report ID 3 (Consumer Control) のパケット構造
+        # [Report ID, Key LSB, Key MSB]
+        state = [0xA1, 3, 0, 0]
+        state[2] = key_code & 0xFF
+        state[3] = (key_code >> 8) & 0xFF
+        
+        # キー入力送信
+        self.device.send_string(state)
+        
+        # キー離上送信 (重要)
+        time.sleep(0.02)
+        self.device.send_string([0xA1, 3, 0, 0])
 
     @dbus.service.method('org.thanhle.btkbservice', in_signature='yay')
     def send_mouse(self, modifier_byte, keys):

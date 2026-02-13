@@ -1,5 +1,6 @@
 #Stop the background process
 sudo hciconfig hci0 down
+sudo hciconfig hci0 class 0x002540
 sudo systemctl daemon-reload
 sudo /etc/init.d/bluetooth start
 # Update  mac address
