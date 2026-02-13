@@ -1,0 +1,17 @@
+[Unit]
+Description=Bluetooth Keyboard Emulator Server
+After=bluetooth.target
+Requires=bluetooth.target
+
+[Service]
+Type=simple
+# パスは環境に合わせて書き換えてください
+ExecStartPre=/usr/bin/hciconfig hci0 class 0x002540
+ExecStart=/usr/bin/python3 /home/yunomin61/keyboard_mouse_emulate_on_linux/server/btk_server.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
